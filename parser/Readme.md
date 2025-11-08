@@ -10,15 +10,15 @@ This Python utility automatically generates C++ `__packed__` structs and unions 
    pip install -r requirements.txt
    ```
 
-2. Go to H26 Avionics Packet Coordinator google sheet and download as excel. Put your Excel file in the same directory as the python script and name it `telemetry.xlsx`.
-
-3. Run the generator
+2. Run the generator
 
    ```bash
    python generate_structs.py
    ```
 
-4. Output
+   The telemetry data is automatically pulled from the [Google Sheet](https://docs.google.com/spreadsheets/d/1Ukaums3NfbJdVOQL7E1QMyPNoQ7gD5Zxciiz4ucRUrk/edit?gid=965673768#gid=965673768).
+
+3. Output
 
    ```
    telemetry_packets.cpp

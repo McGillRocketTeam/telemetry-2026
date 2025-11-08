@@ -216,7 +216,7 @@ def generate_cpp_structs_packed(
 
 
 if __name__ == "__main__":
-    FILE = "telemetry.xlsx"
+    FILE = "https://docs.google.com/spreadsheets/d/1Ukaums3NfbJdVOQL7E1QMyPNoQ7gD5Zxciiz4ucRUrk/export?format=xlsx"
     check_cwd()
 
     ctype_dict = load_encoding_types(FILE)
