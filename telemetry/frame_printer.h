@@ -36,7 +36,7 @@ static void printTestAtomic(const test_atomic_data* t) {
   Serial.println(F("}"));
 }
 
-// Main dispatcher over all atomics present in the frame
+// Main dispatcher
 static void printAtomics(const FrameView& view) {
   Serial.println(F("\n--- Atomics (decoded) ---"));
   if (view.hasAtomic(AT_PROP_ATOMIC)) {
@@ -52,3 +52,10 @@ static void printAtomics(const FrameView& view) {
     printTestAtomic(t);
   }
 }
+
+// Also need a templated call that auto prints 
+// template <typename T>
+// static void printPacket( T ....)
+
+// 
+/// static void printPacket( Prop_data t )
