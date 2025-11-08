@@ -242,7 +242,7 @@ if __name__ == "__main__":
 
 
     generate_cpp_structs_packed(
-        out_path="../telemetry/gen/telemetry_packets.h",
+        out_path="../telemetry/telemetry_packets.h",
         atomics_to_params=atomics_to_params,
         param_to_encoding=param_to_encoding
         )
