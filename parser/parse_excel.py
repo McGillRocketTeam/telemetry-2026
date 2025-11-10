@@ -187,7 +187,7 @@ def build_packet_printer(atomics_to_params: Dict[str, List[str]]) -> str:
 
     # Packet printer header
     lines.append("// AUTO-GENERATED. Do not edit by hand.")
-    lines.append("#include \"packet_printer.h\"")
+    lines.append("#include \"frame_printer.h\"")
     lines.append("#include <Arduino.h>")
     lines.append("")
 
