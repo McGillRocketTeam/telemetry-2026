@@ -1,14 +1,11 @@
 import pandas as pd
 import ctypes
-
 import re
 from pathlib import Path
 from typing import Dict, List
-
 import os
-from pathlib import Path
 
-# Parsing
+# -------------------- Parsing --------------------
 
 def load_encoding_types(file_path: str, sheet_name: str = "Encoding Types") -> dict:
     df = pd.read_excel(file_path, sheet_name=sheet_name)
@@ -64,24 +61,14 @@ def load_parameters(file_path: str, sheet_name: str = "Parameters") -> dict:
 
     return dict(zip(df["variable name"].str.strip(), df["encoding"].str.strip()))
 
-# Helpers for creating output
-
-def to_pascal(s: str) -> str:
-    return "".join(part.capitalize() for part in re.split(r"[_\W]+", s) if part)
+# -------------------- Helpers --------------------
 
 def to_identifier(s: str) -> str:
-    # make a valid C++ identifier (very simple sanitizer)
     s = re.sub(r"\W", "_", s)
     if re.match(r"^\d", s):
         s = "_" + s
     return s
 
-def guard_from_path(out_path: str) -> str:
-    fname = Path(out_path).name.upper()
-    guard = re.sub(r"[^A-Z0-9]+", "_", fname)
-    if not guard.endswith("_"):
-        guard += ""
-    return guard
 
 def check_cwd():
     EXPECTED_DIR = "parser"
@@ -93,18 +80,17 @@ def check_cwd():
             f"Try:\n  cd {EXPECTED_DIR}\n  python parse_excel.py"
         )
 
-# Section builders
+# -------------------- Section builders --------------------
 
-def build_preamble(guard: str) -> str:
-    return "\n".join([
+def build_preamble() -> str:
+    lines = [
         "// AUTO-GENERATED. Do not edit by hand.",
-        f"#ifndef {guard}",
-        f"#define {guard}",
+        "#pragma once"
         "",
         "#include <cstdint>",
-        "",
-    ])
-
+    ]
+    lines.append("")  # blank line
+    return "\n".join(lines)
 
 def build_atomic_enum_section(atomics_to_params: Dict[str, List[str]]) -> str:
     lines = []
@@ -113,24 +99,17 @@ def build_atomic_enum_section(atomics_to_params: Dict[str, List[str]]) -> str:
     for i, atomic in enumerate(atomics_to_params.keys()):
         lines.append(f"    AT_{to_identifier(atomic).upper():<20} = {i},  // bit {i}")
     lines.append("    AT_TOTAL                             // total count")
-    lines.append("};")
-    lines.append("")
+    lines.append("};\n")
     return "\n".join(lines)
 
 def build_single_atomic_section(
     atomic_name: str,
     params: List[str],
-    param_to_encoding: Dict[str, str],
-    embed_header_in_atomics: bool
+    param_to_ctype
 ) -> str:
     struct_name   = to_identifier(atomic_name)
     data_typedef  = f"{struct_name}_data"
     union_typedef = f"{struct_name}_packet"
-
-    lines = []
-    lines.append(f"// ---------- {struct_name} atomic ----------")
-    lines.append(f"typedef struct __attribute__((__packed__)) {data_typedef}")
-    lines.append("{")
 
     CTYPES_TO_CPP = {
         ctypes.c_ubyte:  "uint8_t",
@@ -145,105 +124,203 @@ def build_single_atomic_section(
         ctypes.c_char:   "char",
     }
 
-    if embed_header_in_atomics:
-        lines.append("    FrameHeader header;  // optional embedded header")
+    lines = []
+    lines.append(f"// ---------- {struct_name} atomic ----------")
+    lines.append(f"typedef struct __attribute__((__packed__)) {data_typedef}")
+    lines.append("{")
     for p in params:
         field = to_identifier(p)
-        enc = param_to_ctype.get(p)           # you already reference this
+        enc = param_to_ctype.get(p)
         if enc:
             cpp_type = CTYPES_TO_CPP.get(enc)
             if cpp_type:
-                lines.append(f"    {cpp_type} {field};")
+                if cpp_type == "bool":
+                    lines.append(f"    bool {field} : 1;")  # 1 bit for bool
+                else:
+                    lines.append(f"    {cpp_type} {field};")
             else:
                 lines.append(f"    // TODO: Unmapped ctypes for {field}")
         else:
             lines.append(f"    // TODO: Missing encoding for {field}")
-    lines.append(f"}} {data_typedef};")
-    lines.append("")
+    lines.append(f"}} {data_typedef};\n")
     lines.append(f"typedef union {union_typedef} {{")
     lines.append(f"    {data_typedef} data;")
     lines.append(f"    uint8_t bytes[sizeof({data_typedef})];")
-    lines.append(f"}} {union_typedef};")
-    lines.append("")
+    lines.append(f"}} {union_typedef};\n")
     return "\n".join(lines)
 
 def build_atomics_section(
     atomics_to_params: Dict[str, List[str]],
-    param_to_encoding: Dict[str, str],
-    embed_header_in_atomics: bool
+    param_to_ctype
 ) -> str:
     parts = []
     for atomic, params in atomics_to_params.items():
         parts.append(
             build_single_atomic_section(
-                atomic, params, param_to_encoding, embed_header_in_atomics
-            )
+                atomic, params, param_to_ctype
+                )
         )
     return "\n".join(parts)
 
-def build_atomic_size_array_section(atomics_to_params: dict[str, list[str]]) -> str:
-    """Generate static AT_SIZE[] table matching enum order."""
+def build_atomic_size_declaration() -> str:
+    return "\n".join([
+        "// ---------- Atomic Size Catalog (declaration) ----------",
+        "extern const uint16_t AT_SIZE[AT_TOTAL];",
+        ""
+    ])
+
+def build_atomic_size_definition_cpp(atomics_to_params: Dict[str, List[str]], header_basename: str) -> str:
     lines = []
-    lines.append("// ---------- Atomic Size Catalog ----------")
-    lines.append("static const uint16_t AT_SIZE[AT_TOTAL] = {")
+    lines.append("// AUTO-GENERATED. Do not edit by hand.")
+    lines.append(f'#include "{header_basename}"')
+    lines.append("")
+    lines.append("// ---------- Atomic Size Catalog (definition) ----------")
+    lines.append("const uint16_t AT_SIZE[AT_TOTAL] = {")
     for i, atomic in enumerate(atomics_to_params.keys()):
         struct_name = to_identifier(atomic)
         lines.append(f"    /*{i}*/ sizeof({struct_name}_data),")
     lines.append("};\n")
     return "\n".join(lines)
 
-def build_epilogue(guard: str) -> str:
-    return f"#endif // {guard}\n"
+def build_packet_printer(atomics_to_params: Dict[str, List[str]]) -> str:
+    lines = []
+
+    # Packet printer header
+    lines.append("// AUTO-GENERATED. Do not edit by hand.")
+    lines.append("#include \"packet_printer.h\"")
+    lines.append("#include <Arduino.h>")
+    lines.append("")
+
+    # Define the macro for printing fields
+    lines.append("#define PRINT_FIELD(p, field) { \\")
+    lines.append("  Serial.print(F(#field \": \")); \\")
+    lines.append("  Serial.println(p->field); \\")
+    lines.append("}")
+    lines.append("")
+
+    # Function to print bool values in a human-readable format
+    lines.append("static inline void printBoolLine(const __FlashStringHelper* label, bool b) {")
+    lines.append("  Serial.print(label);")
+    lines.append("  Serial.println(b ? F(\"true\") : F(\"false\"));")
+    lines.append("}")
+    lines.append("")
+
+    # Atomic type names
+    lines.append("const __FlashStringHelper* atomicTypeName(AtomicType at) {")
+    lines.append("  switch (at) {")
+    for i, atomic in enumerate(atomics_to_params.keys()):
+        lines.append(f"    case AT_{to_identifier(atomic).upper()}: return F(\"{atomic}\");")
+    lines.append("    default: return F(\"unknown_atomic\");")
+    lines.append("  }")
+    lines.append("}")
+    lines.append("")
+
+    # Print functions for each atomic type (add more if needed)
+    for atomic, params in atomics_to_params.items():
+        struct_name = to_identifier(atomic)
+        lines.append(f"// ---------------- {atomic} ----------------")
+        lines.append(f"void print{struct_name.capitalize()}Atomic(const {struct_name}_data* p) {{")
+        lines.append("  if (!p) return;")
+        lines.append(f"  Serial.println(F(\"{atomic} {{\"));")
+        for param in params:
+            field = to_identifier(param)
+            lines.append(f"  PRINT_FIELD(p, {field});")
+        lines.append(f"  Serial.println(F(\"}}\"));")
+        lines.append("}")
+        lines.append("")
+
+    # Atomic dispatcher function
+    lines.append("void printAtomic(const FrameView& view, AtomicType at) {")
+    lines.append("  switch (at) {")
+    for i, atomic in enumerate(atomics_to_params.keys()):
+        struct_name = to_identifier(atomic)
+        lines.append(f"    case AT_{to_identifier(atomic).upper()}: {{")
+        lines.append(f"      const auto* p = view.atomicAs<{struct_name}_data>(AT_{to_identifier(atomic).upper()});")
+        lines.append(f"      print{struct_name.capitalize()}Atomic(p);")
+        lines.append("      break;")
+        lines.append("    }")
+    lines.append("    default: Serial.print(F(\"Unknown atomic type: \")); Serial.println(static_cast<int>(at)); break;")
+    lines.append("  }")
+    lines.append("}")
+    lines.append("")
+
+    # Print all atomics
+    lines.append("void printAtomics(const FrameView& view) {")
+    lines.append("  Serial.println(F(\"\\n--- Atomics (decoded) ---\"));")
+    lines.append("  for (int i = 0; i < AT_TOTAL; ++i) {")
+    lines.append("    auto at = static_cast<AtomicType>(i);")
+    lines.append("    if (view.hasAtomic(at)) {")
+    lines.append("      printAtomic(view, at);")
+    lines.append("    }")
+    lines.append("  }")
+    lines.append("}")
+    
+    return "\n".join(lines)
 
 
-def generate_cpp_structs_packed(
-    out_path: str,
+# -------------------- Emitters --------------------
+
+def generate_telemetry_packets(
+    out_base: str,
     atomics_to_params: Dict[str, List[str]],
-    param_to_encoding: Dict[str, str],
-    embed_header_in_atomics: bool = False,
+    param_to_ctype
 ) -> None:
-    guard = guard_from_path(out_path).replace(".", "_")
-    sections = [
-        build_preamble(guard),
-        build_atomic_enum_section(atomics_to_params),
-        build_atomics_section(atomics_to_params, param_to_encoding, embed_header_in_atomics),
-        build_atomic_size_array_section(atomics_to_params),
-        build_epilogue(guard),
-    ]
-    Path(out_path).write_text("\n".join(sections), encoding="utf-8")
-    print(f"Wrote {out_path}")
+    
+    out_header = Path(out_base).with_suffix(".h")
+    out_cpp    = Path(out_base).with_suffix(".cpp")
 
+    header_sections = [
+        build_preamble(),
+        build_atomic_enum_section(atomics_to_params),
+        build_atomics_section(atomics_to_params, param_to_ctype),
+        build_atomic_size_declaration(),
+    ]
+    out_header.write_text("\n".join(header_sections), encoding="utf-8")
+
+    cpp_body = build_atomic_size_definition_cpp(
+        atomics_to_params,
+        header_basename=out_header.name
+    )
+    out_cpp.write_text(cpp_body, encoding="utf-8")
+
+    print(f"Wrote {out_header}")
+    print(f"Wrote {out_cpp}")
+    
+
+def generate_telemetry_printer(
+    out_base: str,
+    atomics_to_params: Dict[str, List[str]]
+) -> None:
+    
+    packet_printer_cpp = Path(out_base).with_suffix(".cpp")
+    packet_printer_body = build_packet_printer(atomics_to_params)
+    packet_printer_cpp.write_text(packet_printer_body, encoding="utf-8")
+
+    print(f"Wrote {packet_printer_cpp}")
 
 
 if __name__ == "__main__":
     FILE = "https://docs.google.com/spreadsheets/d/1Ukaums3NfbJdVOQL7E1QMyPNoQ7gD5Zxciiz4ucRUrk/export?format=xlsx"
     check_cwd()
 
-    ctype_dict = load_encoding_types(FILE)
+    ctype_dict        = load_encoding_types(FILE)
     param_to_encoding = load_parameters(FILE)
     atomics_to_params = load_atomics(FILE)
 
-    # Map each parameter to its ctype (via encoding)
     param_to_ctype = {
         param: ctype_dict.get(encoding)
         for param, encoding in param_to_encoding.items()
         if encoding in ctype_dict
     }
 
-    # Combine with atomics
-    atomics_to_fields = {
-        atomic: [(p, param_to_ctype.get(p)) for p in params]
-        for atomic, params in atomics_to_params.items()
-    }
-    # print("Ctype dict\n", ctype_dict)
-    # print("Param to encoding:\n", param_to_encoding)
-    # print("Param to cytpe:\n", param_to_ctype)
-    # print("Atomics to fields:\n", atomics_to_fields)
-
-
-    generate_cpp_structs_packed(
-        out_path="../telemetry/telemetry_packets.h",
+    generate_telemetry_packets(
+        out_base="../telemetry/gen/telemetry_packets",
         atomics_to_params=atomics_to_params,
-        param_to_encoding=param_to_encoding
-        )
-
+        param_to_ctype=param_to_ctype
+    )
+    
+    generate_telemetry_printer(
+        out_base="../telemetry/gen/frame_printer",
+        atomics_to_params=atomics_to_params
+    )
+    
