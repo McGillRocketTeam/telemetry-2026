@@ -1,5 +1,4 @@
 import pandas as pd
-import ctypes
 import re
 from pathlib import Path
 from typing import Dict, List
@@ -13,23 +12,11 @@ def load_encoding_types(file_path: str, sheet_name: str = "Encoding Types") -> d
 
     encoding_dict = dict(zip(df["name"], df["c++ type"]))
 
-    type_map = {
-        "uint8_t": ctypes.c_ubyte,
-        "uint16_t": ctypes.c_uint16,
-        "uint32_t": ctypes.c_uint32,
-        "int8_t": ctypes.c_byte,
-        "int16_t": ctypes.c_int16,
-        "int32_t": ctypes.c_int32,
-        "float": ctypes.c_float,
-        "double": ctypes.c_double,
-        "bool": ctypes.c_bool,
-        "char": ctypes.c_char,
-    }
-
+    # Return C++ type strings directly from Excel
     return {
-        name: type_map[c_type]
+        name: c_type
         for name, c_type in encoding_dict.items()
-        if c_type in type_map
+        if c_type
     }
 
 def load_atomics(file_path: str, sheet_name: str = "Atomics") -> dict:
@@ -105,24 +92,11 @@ def build_atomic_enum_section(atomics_to_params: Dict[str, List[str]]) -> str:
 def build_single_atomic_section(
     atomic_name: str,
     params: List[str],
-    param_to_ctype
+    param_to_cpp_type
 ) -> str:
     struct_name   = to_identifier(atomic_name)
     data_typedef  = f"{struct_name}_data"
     union_typedef = f"{struct_name}_packet"
-
-    CTYPES_TO_CPP = {
-        ctypes.c_ubyte:  "uint8_t",
-        ctypes.c_uint16: "uint16_t",
-        ctypes.c_uint32: "uint32_t",
-        ctypes.c_byte:   "int8_t",
-        ctypes.c_int16:  "int16_t",
-        ctypes.c_int32:  "int32_t",
-        ctypes.c_float:  "float",
-        ctypes.c_double: "double",
-        ctypes.c_bool:   "bool",
-        ctypes.c_char:   "char",
-    }
 
     lines = []
     lines.append(f"// ---------- {struct_name} atomic ----------")
@@ -130,16 +104,14 @@ def build_single_atomic_section(
     lines.append("{")
     for p in params:
         field = to_identifier(p)
-        enc = param_to_ctype.get(p)
-        if enc:
-            cpp_type = CTYPES_TO_CPP.get(enc)
-            if cpp_type:
-                if cpp_type == "bool":
-                    lines.append(f"    bool {field} : 1;")  # 1 bit for bool
-                else:
-                    lines.append(f"    {cpp_type} {field};")
+        cpp_type = param_to_cpp_type.get(p)
+        if cpp_type:
+            if cpp_type == "bool":
+                lines.append(f"    bool {field} : 1;")  # 1 bit for bool
+            elif cpp_type == "char[6]":
+                lines.append(f"    char {field}[6];")
             else:
-                lines.append(f"    // TODO: Unmapped ctypes for {field}")
+                lines.append(f"    {cpp_type} {field};")
         else:
             lines.append(f"    // TODO: Missing encoding for {field}")
     lines.append(f"}} {data_typedef};\n")
@@ -151,13 +123,13 @@ def build_single_atomic_section(
 
 def build_atomics_section(
     atomics_to_params: Dict[str, List[str]],
-    param_to_ctype
+    param_to_cpp_type
 ) -> str:
     parts = []
     for atomic, params in atomics_to_params.items():
         parts.append(
             build_single_atomic_section(
-                atomic, params, param_to_ctype
+                atomic, params, param_to_cpp_type
                 )
         )
     return "\n".join(parts)
@@ -263,7 +235,7 @@ def build_packet_printer(atomics_to_params: Dict[str, List[str]]) -> str:
 def generate_telemetry_packets(
     out_base: str,
     atomics_to_params: Dict[str, List[str]],
-    param_to_ctype
+    param_to_cpp_type
 ) -> None:
     
     out_header = Path(out_base).with_suffix(".h")
@@ -272,7 +244,7 @@ def generate_telemetry_packets(
     header_sections = [
         build_preamble(),
         build_atomic_enum_section(atomics_to_params),
-        build_atomics_section(atomics_to_params, param_to_ctype),
+        build_atomics_section(atomics_to_params, param_to_cpp_type),
         build_atomic_size_declaration(),
     ]
     out_header.write_text("\n".join(header_sections), encoding="utf-8")
@@ -303,20 +275,20 @@ if __name__ == "__main__":
     FILE = "https://docs.google.com/spreadsheets/d/1Ukaums3NfbJdVOQL7E1QMyPNoQ7gD5Zxciiz4ucRUrk/export?format=xlsx"
     check_cwd()
 
-    ctype_dict        = load_encoding_types(FILE)
+    encoding_to_cpp_type = load_encoding_types(FILE)
     param_to_encoding = load_parameters(FILE)
     atomics_to_params = load_atomics(FILE)
 
-    param_to_ctype = {
-        param: ctype_dict.get(encoding)
+    param_to_cpp_type = {
+        param: encoding_to_cpp_type.get(encoding)
         for param, encoding in param_to_encoding.items()
-        if encoding in ctype_dict
+        if encoding in encoding_to_cpp_type
     }
 
     generate_telemetry_packets(
         out_base="../telemetry/gen/telemetry_packets",
         atomics_to_params=atomics_to_params,
-        param_to_ctype=param_to_ctype
+        param_to_cpp_type=param_to_cpp_type
     )
     
     generate_telemetry_printer(
