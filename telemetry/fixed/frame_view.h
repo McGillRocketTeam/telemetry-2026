@@ -6,8 +6,7 @@
 
 enum class ParseError : uint8_t { Ok=0, TooShort, PayloadTooShort, UnknownAtomicSize };
 
-class FrameView {
-public:
+struct FrameView {
     FrameView();
     FrameView(const uint8_t* bytes, size_t len);
     void reset(const uint8_t* bytes, size_t len);
@@ -30,7 +29,6 @@ public:
         return p ? reinterpret_cast<const T*>(p) : nullptr;
     }
 
-private:
     const uint8_t* _base;
     size_t _len;
 };
