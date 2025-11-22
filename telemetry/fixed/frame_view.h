@@ -1,4 +1,5 @@
 #pragma once
+#ifdef __cplusplus
 #include <cstddef>
 #include <cstdint>
 #include "frame_header.h"
@@ -32,3 +33,4 @@ struct FrameView {
     const uint8_t* _base;
     size_t _len;
 };
+#endif

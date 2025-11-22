@@ -1,5 +1,6 @@
 // AUTO-GENERATED. Do not edit by hand.
 #pragma once
+#ifdef __cplusplus
 #include <cstdint>
 
 // ---------- AtomicType Enum ----------
@@ -110,3 +111,5 @@ typedef union radio_atomic_packet {
 
 // ---------- Atomic Size Catalog (declaration) ----------
 extern const uint16_t AT_SIZE[AT_TOTAL];
+
+#endif

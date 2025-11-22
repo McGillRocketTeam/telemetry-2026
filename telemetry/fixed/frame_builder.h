@@ -1,4 +1,5 @@
 #pragma once
+#ifdef __cplusplus
 #include <cstddef>
 #include <cstdint>
 #include "frame_header.h"
@@ -19,3 +20,4 @@ struct FrameBuilder {
     bool addAtomic(int idx, const void* src, size_t sz);
     size_t finalize(uint16_t seq, uint8_t flags, uint8_t ack_id);
 };
+#endif
