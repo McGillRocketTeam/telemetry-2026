@@ -1,4 +1,5 @@
 #pragma once
+#ifdef __cplusplus
 #include <cstdint>
 
 // ---- flags (1 = set) ----
@@ -22,3 +23,4 @@ typedef union {
 
 static inline bool header_has_cts(const FrameHeader* h) { return (h->flags & FLAG_CTS) != 0; }
 static inline bool header_has_ack(const FrameHeader* h) { return (h->flags & FLAG_ACK) != 0; }
+#endif
