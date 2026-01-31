@@ -32,6 +32,10 @@ bool FrameView::ack() const {
     return (_len >= sizeof(FrameHeader)) && header_has_ack(header());
 }
 
+int FrameView::ack_id() const {
+    return header_get_ack_id(header());
+}
+
 bool FrameView::hasAtomic(int idx) const {
     if (idx < 0 || idx >= AT_TOTAL || _len < sizeof(FrameHeader)) return false;
     return (header()->atomics_bitmap & (1u << idx)) != 0;

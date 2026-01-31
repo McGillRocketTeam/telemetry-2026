@@ -19,6 +19,7 @@ struct FrameView {
 
     bool cts() const;
     bool ack() const;
+    int ack_id() const;
 
     bool hasAtomic(int idx) const;
     const uint8_t* atomicPtr(int idx) const;
