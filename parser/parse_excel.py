@@ -74,10 +74,14 @@ def build_preamble() -> str:
         "// AUTO-GENERATED. Do not edit by hand.",
         "#pragma once"
         "",
+        "#ifdef __cplusplus",
         "#include <cstdint>",
     ]
     lines.append("")  # blank line
     return "\n".join(lines)
+
+def build_postamble() -> str:
+    return "#endif"
 
 def build_atomic_enum_section(atomics_to_params: Dict[str, List[str]]) -> str:
     lines = []
@@ -246,6 +250,7 @@ def generate_telemetry_packets(
         build_atomic_enum_section(atomics_to_params),
         build_atomics_section(atomics_to_params, param_to_cpp_type),
         build_atomic_size_declaration(),
+        build_postamble(),
     ]
     out_header.write_text("\n".join(header_sections), encoding="utf-8")
 

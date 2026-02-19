@@ -1,3 +1,4 @@
+#ifdef __cplusplus
 #include <cstring>
 #include <vector>
 #include <cstdint>
@@ -49,3 +50,8 @@ size_t FrameBuilder::finalize(uint16_t seq, uint8_t flags, uint8_t ack_id) {
 
     return current_offset;
 }
+
+FrameBuilder::~FrameBuilder(){
+    delete[] temp_buffer;
+}
+#endif
