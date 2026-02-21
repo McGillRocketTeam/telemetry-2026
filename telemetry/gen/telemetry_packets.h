@@ -72,8 +72,8 @@ typedef union prop_atomic_packet {
 typedef struct __attribute__((__packed__)) flight_atomic_data
 {
     uint8_t flight_stage;
-    float barometer_alititude_from_pad;
-    float barometer_alititude_from_sea_level;
+    float barometer_altitude_from_pad;
+    float barometer_altitude_from_sea_level;
     float barometer_pressure;
     float apogee_from_ground;
     float atm_temp;

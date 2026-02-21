@@ -77,8 +77,8 @@ void printFlight_atomicAtomic(const flight_atomic_data* p) {
   if (!p) return;
   Serial.println(F("flight_atomic {"));
   PRINT_FIELD(p, flight_stage);
-  PRINT_FIELD(p, barometer_alititude_from_pad);
-  PRINT_FIELD(p, barometer_alititude_from_sea_level);
+  PRINT_FIELD(p, barometer_altitude_from_pad);
+  PRINT_FIELD(p, barometer_altitude_from_sea_level);
   PRINT_FIELD(p, barometer_pressure);
   PRINT_FIELD(p, apogee_from_ground);
   PRINT_FIELD(p, atm_temp);
