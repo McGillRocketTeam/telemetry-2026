@@ -1,3 +1,4 @@
+from datetime import datetime
 import pandas as pd
 import re
 from pathlib import Path
@@ -50,12 +51,13 @@ def load_parameters(file_path: str, sheet_name: str = "Parameters") -> dict:
 
 # -------------------- Helpers --------------------
 
+generationDate = datetime.now().strftime("%Y-%m-%d %H:%M")
+
 def to_identifier(s: str) -> str:
     s = re.sub(r"\W", "_", s)
     if re.match(r"^\d", s):
         s = "_" + s
     return s
-
 
 def check_cwd():
     EXPECTED_DIR = "parser"
@@ -67,11 +69,38 @@ def check_cwd():
             f"Try:\n  cd {EXPECTED_DIR}\n  python parse_excel.py"
         )
 
+def to_pascal_case(s: str) -> str:
+    parts = re.split(r"[_\W]+", s)
+    return "".join(p.capitalize() for p in parts if p)
+
+def next_literal_for_type(cpp_type: str, counters: dict) -> str:
+    cpp_type = cpp_type.strip()
+
+    if cpp_type not in counters:
+        counters[cpp_type] = 0
+
+    n = counters[cpp_type]
+    counters[cpp_type] += 1
+
+    if cpp_type == "bool":
+        return "true" if (n % 2) else "false"
+
+    if cpp_type == "float":
+        return f"{n * 0.1:.1f}f"
+
+    if cpp_type == "double":
+        return f"{n}.0"
+
+    if re.fullmatch(r"char\s*\[\s*\d+\s*\]", cpp_type):
+        return f"str{n}"
+
+    return str(n)
+
 # -------------------- Section builders --------------------
 
 def build_preamble() -> str:
     lines = [
-        "// AUTO-GENERATED. Do not edit by hand.",
+        f"// AUTO-GENERATED. Do not edit by hand. Generated on: {generationDate}",
         "#pragma once"
         "",
         "#ifdef __cplusplus",
@@ -147,7 +176,7 @@ def build_atomic_size_declaration() -> str:
 
 def build_atomic_size_definition_cpp(atomics_to_params: Dict[str, List[str]], header_basename: str) -> str:
     lines = []
-    lines.append("// AUTO-GENERATED. Do not edit by hand.")
+    lines.append(f"// AUTO-GENERATED. Do not edit by hand. Generated on: {generationDate}")
     lines.append(f'#include "{header_basename}"')
     lines.append("")
     lines.append("// ---------- Atomic Size Catalog (definition) ----------")
@@ -162,7 +191,7 @@ def build_packet_printer(atomics_to_params: Dict[str, List[str]]) -> str:
     lines = []
 
     # Packet printer header
-    lines.append("// AUTO-GENERATED. Do not edit by hand.")
+    lines.append(f"// AUTO-GENERATED. Do not edit by hand. Generated on: {generationDate}")
     lines.append("#include \"frame_printer.h\"")
     lines.append("#include <Arduino.h>")
     lines.append("")
@@ -233,8 +262,99 @@ def build_packet_printer(atomics_to_params: Dict[str, List[str]]) -> str:
     
     return "\n".join(lines)
 
+def build_telemetry_generator_cpp(
+    atomics_to_params: Dict[str, List[str]],
+    param_to_cpp_type: Dict[str, str],
+    header_basename: str = "telemetry_generator.h",
+    packets_header: str = "telemetry_packets.h",
+    frame_builder_header: str = "frame_builder.h",
+) -> str:
+    lines = []
 
-# -------------------- Emitters --------------------
+    lines.append(f"// AUTO-GENERATED. Do not edit by hand. Generated on: {generationDate}")
+    lines.append(f'#include "{header_basename}"')
+    lines.append("")
+    lines.append("#include <cstring>")
+    lines.append("#include <Arduino.h>")
+    lines.append("")
+    lines.append(f'#include "{packets_header}"')
+    lines.append(f'#include "{frame_builder_header}"')
+    lines.append("")
+
+    counters = {}
+
+    for atomic, params in atomics_to_params.items():
+        struct_name = to_identifier(atomic)
+        fill_name = f"fill{to_pascal_case(struct_name)}"
+
+        lines.append(f"static void {fill_name}({struct_name}_data& x)")
+        lines.append("{")
+        lines.append("    x = {};")
+
+        for param in params:
+            field = to_identifier(param)
+            cpp_type = param_to_cpp_type.get(param)
+
+            if not cpp_type:
+                lines.append(f"    // TODO: missing type for {field}")
+                continue
+
+            cpp_type = cpp_type.strip()
+
+            if re.fullmatch(r"char\s*\[\s*\d+\s*\]", cpp_type):
+                s = next_literal_for_type(cpp_type, counters)
+                lines.append(f'    std::strncpy(x.{field}, "{s}", sizeof(x.{field}));')
+                lines.append(f"    x.{field}[sizeof(x.{field}) - 1] = '\\0';")
+            else:
+                value = next_literal_for_type(cpp_type, counters)
+                lines.append(f"    x.{field} = {value};")
+
+        lines.append("}")
+        lines.append("")
+
+    lines.append("bool buildTelemetryFrame(uint8_t* frameBuf,")
+    lines.append("                         size_t frameCap,")
+    lines.append("                         size_t& outFrameLen,")
+    lines.append("                         uint16_t& inOutSeqNumber,")
+    lines.append("                         uint8_t flags,")
+    lines.append("                         uint8_t ack_id)")
+    lines.append("{")
+
+    generated_vars = []
+    counter = 0
+
+    for atomic in atomics_to_params.keys():
+        struct_name = to_identifier(atomic)
+        var_name = f"{struct_name}_instance_{counter}"
+        counter += 1
+        generated_vars.append((atomic, struct_name, var_name))
+        lines.append(f"    {struct_name}_data {var_name}{{}};")
+
+    lines.append("")
+
+    for _, struct_name, var_name in generated_vars:
+        fill_name = f"fill{to_pascal_case(struct_name)}"
+        lines.append(f"    {fill_name}({var_name});")
+
+    lines.append("")
+    lines.append("    FrameBuilder fb(frameBuf, frameCap);")
+    lines.append("")
+    lines.append("    bool ok = true;")
+
+    for atomic, _, var_name in generated_vars:
+        enum_name = f"AT_{to_identifier(atomic).upper()}"
+        lines.append(f"    ok &= fb.addAtomic((int){enum_name}, &{var_name}, sizeof({var_name}));")
+
+    lines.append("")
+    lines.append("    if (!ok)")
+    lines.append("        return false;")
+    lines.append("")
+    lines.append("    outFrameLen = fb.finalize(inOutSeqNumber++, flags, ack_id);")
+    lines.append("    return true;")
+    lines.append("}")
+    lines.append("")
+
+    return "\n".join(lines)
 
 def generate_telemetry_packets(
     out_base: str,
@@ -262,7 +382,6 @@ def generate_telemetry_packets(
 
     print(f"Wrote {out_header}")
     print(f"Wrote {out_cpp}")
-    
 
 def generate_telemetry_printer(
     out_base: str,
@@ -275,6 +394,21 @@ def generate_telemetry_printer(
 
     print(f"Wrote {packet_printer_cpp}")
 
+def generate_telemetry_generator(
+    out_base: str,
+    atomics_to_params: Dict[str, List[str]],
+    param_to_cpp_type: Dict[str, str]
+) -> None:
+    out_cpp = Path(out_base).with_suffix(".cpp")
+
+    cpp_body = build_telemetry_generator_cpp(
+        atomics_to_params=atomics_to_params,
+        param_to_cpp_type=param_to_cpp_type
+    )
+
+    out_cpp.write_text(cpp_body, encoding="utf-8")
+
+    print(f"Wrote {out_cpp}")
 
 if __name__ == "__main__":
     FILE = "https://docs.google.com/spreadsheets/d/1Ukaums3NfbJdVOQL7E1QMyPNoQ7gD5Zxciiz4ucRUrk/export?format=xlsx"
@@ -300,4 +434,9 @@ if __name__ == "__main__":
         out_base="../telemetry/gen/frame_printer",
         atomics_to_params=atomics_to_params
     )
-    
+
+    generate_telemetry_generator(
+        out_base="../telemetry/gen/telemetry_generator",
+        atomics_to_params=atomics_to_params,
+        param_to_cpp_type=param_to_cpp_type
+    )
