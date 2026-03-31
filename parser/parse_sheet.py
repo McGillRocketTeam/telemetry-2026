@@ -44,10 +44,10 @@ def load_parameters(file_path: str, sheet_name: str = "Parameters") -> dict:
     df = pd.read_excel(file_path, sheet_name=sheet_name, header=1)
     df.columns = df.columns.astype(str).str.strip().str.lower()
 
-    if "variable name" not in df.columns or "encoding" not in df.columns:
+    if "packet variable name" not in df.columns or "encoding" not in df.columns:
         raise ValueError("Sheet must contain 'Variable Name' and 'Encoding' columns.")
 
-    return dict(zip(df["variable name"].str.strip(), df["encoding"].str.strip()))
+    return dict(zip(df["packet variable name"].str.strip(), df["encoding"].str.strip()))
 
 # -------------------- Helpers --------------------
 
