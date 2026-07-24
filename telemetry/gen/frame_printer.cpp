@@ -1,4 +1,4 @@
-// AUTO-GENERATED. Do not edit by hand. Generated on: 2026-07-23 18:05
+// AUTO-GENERATED. Do not edit by hand. Generated on: 2026-07-23 22:35
 #include "frame_printer.h"
 #include <Arduino.h>
 
@@ -107,12 +107,12 @@ void printFc_internal_atomicAtomic(const fc_internal_atomic_data* p) {
   if (!p) return;
   Serial.println(F("fc_internal_atomic {"));
   PRINT_FIELD(p, fc_pressure_hpa);
+  PRINT_FIELD(p, fc_time_since_start);
   PRINT_FIELD(p, fc_temp_celsius_em2);
+  PRINT_FIELD(p, battery_current_draw_mA);
+  PRINT_FIELD(p, battery_voltage_dV);
   PRINT_FIELD(p, fc_rssi_dBm);
   PRINT_FIELD(p, fc_snr_dB);
-  PRINT_FIELD(p, battery_voltage_dV);
-  PRINT_FIELD(p, battery_current_draw_mA);
-  PRINT_FIELD(p, fc_time_since_start);
   Serial.println(F("}"));
 }
 
@@ -251,13 +251,14 @@ void printPayload_adapter_3_atomicAtomic(const payload_adapter_3_atomic_data* p)
 void printGps_debug_atomicAtomic(const gps_debug_atomic_data* p) {
   if (!p) return;
   Serial.println(F("gps_debug_atomic {"));
-  PRINT_FIELD(p, gps_fix_type);
-  PRINT_FIELD(p, gps_fix_ok);
   PRINT_FIELD(p, gps_hacc_mm);
   PRINT_FIELD(p, gps_vacc_mm);
   PRINT_FIELD(p, gps_ground_speed_mmps);
   PRINT_FIELD(p, gps_heading_motion_deg_e5);
   PRINT_FIELD(p, gps_pdop_centi);
+  PRINT_FIELD(p, gps_fix_type);
+  PRINT_FIELD(p, gps_satellites);
+  PRINT_FIELD(p, gps_fix_ok);
   Serial.println(F("}"));
 }
 

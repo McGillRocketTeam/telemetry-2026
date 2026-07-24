@@ -1,4 +1,4 @@
-// AUTO-GENERATED. Do not edit by hand. Generated on: 2026-07-23 18:05
+// AUTO-GENERATED. Do not edit by hand. Generated on: 2026-07-23 22:35
 #pragma once
 #ifdef __cplusplus
 #include <cstdint>
@@ -108,12 +108,12 @@ typedef union flight_stage_atomic_packet {
 typedef struct __attribute__((__packed__)) fc_internal_atomic_data
 {
     float fc_pressure_hpa;
+    uint32_t fc_time_since_start;
     int16_t fc_temp_celsius_em2;
+    int16_t battery_current_draw_mA;
+    uint8_t battery_voltage_dV;
     uint8_t fc_rssi_dBm;
     int8_t fc_snr_dB;
-    uint8_t battery_voltage_dV;
-    int16_t battery_current_draw_mA;
-    uint32_t fc_time_since_start;
 } fc_internal_atomic_data;
 
 typedef union fc_internal_atomic_packet {
@@ -294,13 +294,14 @@ typedef union payload_adapter_3_atomic_packet {
 // ---------- gps_debug_atomic atomic ----------
 typedef struct __attribute__((__packed__)) gps_debug_atomic_data
 {
-    uint8_t gps_fix_type;
-    bool gps_fix_ok : 1;
     uint32_t gps_hacc_mm;
     uint32_t gps_vacc_mm;
     int32_t gps_ground_speed_mmps;
     int32_t gps_heading_motion_deg_e5;
     uint16_t gps_pdop_centi;
+    uint8_t gps_fix_type;
+    uint8_t gps_satellites;
+    bool gps_fix_ok : 1;
 } gps_debug_atomic_data;
 
 typedef union gps_debug_atomic_packet {

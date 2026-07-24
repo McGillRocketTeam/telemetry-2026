@@ -1,4 +1,4 @@
-// AUTO-GENERATED. Do not edit by hand. Generated on: 2026-07-23 18:05
+// AUTO-GENERATED. Do not edit by hand. Generated on: 2026-07-23 22:35
 #include "telemetry_generator.h"
 
 #include <cstring>
@@ -68,12 +68,12 @@ static void fillFcInternalAtomic(fc_internal_atomic_data& x)
 {
     x = {};
     x.fc_pressure_hpa = 0.0f;
-    x.fc_temp_celsius_em2 = 2;
-    x.fc_rssi_dBm = 1;
-    x.fc_snr_dB = 0;
-    x.battery_voltage_dV = 2;
-    x.battery_current_draw_mA = 3;
     x.fc_time_since_start = 0;
+    x.fc_temp_celsius_em2 = 2;
+    x.battery_current_draw_mA = 3;
+    x.battery_voltage_dV = 1;
+    x.fc_rssi_dBm = 2;
+    x.fc_snr_dB = 0;
 }
 
 static void fillAltitudeAtomic(altitude_atomic_data& x)
@@ -185,13 +185,14 @@ static void fillPayloadAdapter3Atomic(payload_adapter_3_atomic_data& x)
 static void fillGpsDebugAtomic(gps_debug_atomic_data& x)
 {
     x = {};
-    x.gps_fix_type = 3;
-    x.gps_fix_ok = false;
     x.gps_hacc_mm = 2;
     x.gps_vacc_mm = 3;
     x.gps_ground_speed_mmps = 0;
     x.gps_heading_motion_deg_e5 = 1;
     x.gps_pdop_centi = 20;
+    x.gps_fix_type = 3;
+    x.gps_satellites = 4;
+    x.gps_fix_ok = false;
 }
 
 bool buildTelemetryFrame(uint8_t* frameBuf,

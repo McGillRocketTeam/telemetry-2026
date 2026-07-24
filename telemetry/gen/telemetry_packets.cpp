@@ -1,4 +1,4 @@
-// AUTO-GENERATED. Do not edit by hand. Generated on: 2026-07-23 18:05
+// AUTO-GENERATED. Do not edit by hand. Generated on: 2026-07-23 22:35
 #include "telemetry_packets.h"
 
 // ---------- Atomic Size Catalog (definition) ----------
