@@ -6,6 +6,7 @@ Use this checklist when updating generated telemetry files from the telemetry sh
 
 - [ ] Open the telemetry sheet and confirm the Atomics and Parameters entries are correct.
 - [ ] Confirm every atomic parameter uses the proper C++ type through the sheet's encoding/type columns.
+- [ ] Within each atomic, order fields from largest C++ type to smallest: 32-bit, then 16-bit, then 8-bit, then bools. `char[6]` fields are exempt from this ordering rule.
 - [ ] If any atomic, parameter, encoding, or C++ type is unclear, stop and contact the maintainer before generating files.
 - [ ] Confirm Python is available:
 

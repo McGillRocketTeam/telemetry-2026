@@ -2,7 +2,7 @@ from datetime import datetime
 import pandas as pd
 import re
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 import os
 
 # -------------------- Parsing --------------------
@@ -96,6 +96,59 @@ def next_literal_for_type(cpp_type: str, counters: dict) -> str:
 
     return str(n)
 
+def cpp_type_size_bits(cpp_type: str) -> Optional[int]:
+    cpp_type = cpp_type.strip()
+
+    if re.fullmatch(r"char\s*\[\s*6\s*\]", cpp_type):
+        return None
+
+    if cpp_type == "bool":
+        return 1
+
+    if re.fullmatch(r"(u?int8_t|char|unsigned char|signed char)", cpp_type):
+        return 8
+
+    if re.fullmatch(r"u?int16_t", cpp_type):
+        return 16
+
+    if re.fullmatch(r"(u?int32_t|float)", cpp_type):
+        return 32
+
+    if re.fullmatch(r"(u?int64_t|double)", cpp_type):
+        return 64
+
+    return None
+
+def validate_atomic_field_order(
+    atomics_to_params: Dict[str, List[str]],
+    param_to_cpp_type: Dict[str, str]
+) -> None:
+    for atomic, params in atomics_to_params.items():
+        previous_size = None
+        previous_param = None
+        previous_type = None
+
+        for param in params:
+            cpp_type = param_to_cpp_type.get(param)
+            if not cpp_type:
+                continue
+
+            size = cpp_type_size_bits(cpp_type)
+            if size is None:
+                continue
+
+            if previous_size is not None and size > previous_size:
+                raise ValueError(
+                    "Atomic fields must be ordered from largest to smallest C++ type. "
+                    f"In '{atomic}', field '{param}' ({cpp_type}, {size} bits) appears "
+                    f"after '{previous_param}' ({previous_type}, {previous_size} bits). "
+                    "Move smaller fields, especially bools, toward the end of the atomic."
+                )
+
+            previous_size = size
+            previous_param = param
+            previous_type = cpp_type
+
 # -------------------- Section builders --------------------
 
 def build_preamble() -> str:
@@ -116,7 +169,7 @@ def build_atomic_enum_section(atomics_to_params: Dict[str, List[str]]) -> str:
     lines = []
     lines.append("// ---------- AtomicType Enum ----------")
     lines.append("enum AtomicType {")
-    if len(atomics_to_params) >= 32:
+    if len(atomics_to_params) > 32:
         raise ValueError(
             "Telemetry supports at most 32 atomics because atomics_bitmap is uint32_t"
         )
@@ -427,6 +480,8 @@ if __name__ == "__main__":
         for param, encoding in param_to_encoding.items()
         if encoding in encoding_to_cpp_type
     }
+
+    validate_atomic_field_order(atomics_to_params, param_to_cpp_type)
 
     generate_telemetry_packets(
         out_base="../telemetry/gen/telemetry_packets",
