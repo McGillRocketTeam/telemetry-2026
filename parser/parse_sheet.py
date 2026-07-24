@@ -116,6 +116,10 @@ def build_atomic_enum_section(atomics_to_params: Dict[str, List[str]]) -> str:
     lines = []
     lines.append("// ---------- AtomicType Enum ----------")
     lines.append("enum AtomicType {")
+    if len(atomics_to_params) >= 32:
+        raise ValueError(
+            "Telemetry supports at most 32 atomics because atomics_bitmap is uint32_t"
+        )
     for i, atomic in enumerate(atomics_to_params.keys()):
         lines.append(f"    AT_{to_identifier(atomic).upper():<20} = {i},  // bit {i}")
     lines.append("    AT_TOTAL                             // total count")
