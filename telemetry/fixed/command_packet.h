@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstdint>
 
 // Command string supports up to 4 characters
