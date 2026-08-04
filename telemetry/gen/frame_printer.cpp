@@ -1,4 +1,4 @@
-// AUTO-GENERATED. Do not edit by hand. Generated on: 2026-07-27 19:39
+// AUTO-GENERATED. Do not edit by hand. Generated on: 2026-08-03 21:52
 #include "frame_printer.h"
 #include <Arduino.h>
 
@@ -28,8 +28,8 @@ const __FlashStringHelper* atomicTypeName(AtomicType at) {
     case AT_SD_ATOMIC: return F("sd_atomic");
     case AT_PAYLOAD_STATUS_ATOMIC: return F("payload_status_atomic");
     case AT_PAYLOAD_DATA_ATOMIC: return F("payload_data_atomic");
-    case AT_PAYLOAD_ADAPTER0_ATOMIC: return F("payload_adapter0_atomic");
-    case AT_PAYLOAD_ADAPTER1_ATOMIC: return F("payload_adapter1_atomic");
+    case AT_PAYLOAD_ADAPTER_0_ATOMIC: return F("payload_adapter_0_atomic");
+    case AT_PAYLOAD_ADAPTER_1_ATOMIC: return F("payload_adapter_1_atomic");
     case AT_PAYLOAD_ADAPTER_2_ATOMIC: return F("payload_adapter_2_atomic");
     case AT_PAYLOAD_ADAPTER_3_ATOMIC: return F("payload_adapter_3_atomic");
     case AT_GPS_DEBUG_ATOMIC: return F("gps_debug_atomic");
@@ -209,20 +209,20 @@ void printPayload_data_atomicAtomic(const payload_data_atomic_data* p) {
   Serial.println(F("}"));
 }
 
-// ---------------- payload_adapter0_atomic ----------------
-void printPayload_adapter0_atomicAtomic(const payload_adapter0_atomic_data* p) {
+// ---------------- payload_adapter_0_atomic ----------------
+void printPayload_adapter_0_atomicAtomic(const payload_adapter_0_atomic_data* p) {
   if (!p) return;
-  Serial.println(F("payload_adapter0_atomic {"));
+  Serial.println(F("payload_adapter_0_atomic {"));
   PRINT_FIELD(p, payload_adapter_0_raw_x);
   PRINT_FIELD(p, payload_adapter_0_raw_y);
   PRINT_FIELD(p, payload_adapter_0_raw_z);
   Serial.println(F("}"));
 }
 
-// ---------------- payload_adapter1_atomic ----------------
-void printPayload_adapter1_atomicAtomic(const payload_adapter1_atomic_data* p) {
+// ---------------- payload_adapter_1_atomic ----------------
+void printPayload_adapter_1_atomicAtomic(const payload_adapter_1_atomic_data* p) {
   if (!p) return;
-  Serial.println(F("payload_adapter1_atomic {"));
+  Serial.println(F("payload_adapter_1_atomic {"));
   PRINT_FIELD(p, payload_adapter_1_raw_x);
   PRINT_FIELD(p, payload_adapter_1_raw_y);
   PRINT_FIELD(p, payload_adapter_1_raw_z);
@@ -384,14 +384,14 @@ void printAtomic(const FrameView& view, AtomicType at) {
       printPayload_data_atomicAtomic(p);
       break;
     }
-    case AT_PAYLOAD_ADAPTER0_ATOMIC: {
-      const auto* p = view.atomicAs<payload_adapter0_atomic_data>(AT_PAYLOAD_ADAPTER0_ATOMIC);
-      printPayload_adapter0_atomicAtomic(p);
+    case AT_PAYLOAD_ADAPTER_0_ATOMIC: {
+      const auto* p = view.atomicAs<payload_adapter_0_atomic_data>(AT_PAYLOAD_ADAPTER_0_ATOMIC);
+      printPayload_adapter_0_atomicAtomic(p);
       break;
     }
-    case AT_PAYLOAD_ADAPTER1_ATOMIC: {
-      const auto* p = view.atomicAs<payload_adapter1_atomic_data>(AT_PAYLOAD_ADAPTER1_ATOMIC);
-      printPayload_adapter1_atomicAtomic(p);
+    case AT_PAYLOAD_ADAPTER_1_ATOMIC: {
+      const auto* p = view.atomicAs<payload_adapter_1_atomic_data>(AT_PAYLOAD_ADAPTER_1_ATOMIC);
+      printPayload_adapter_1_atomicAtomic(p);
       break;
     }
     case AT_PAYLOAD_ADAPTER_2_ATOMIC: {
